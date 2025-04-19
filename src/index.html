@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiverse Spectrum Analyzer</title>
+    <style>
+        :root {
+            --primary-bg: #0a0a1a;
+            --secondary-bg: #1a1a2a;
+            --panel-bg: #252538;
+            --text-color: #e0e0ff;
+            --highlight-color: #50c8ff;
+            --accent-color: #ff50c8;
+            --success-color: #50ff8d;
+            --warning-color: #ffcc50;
+            --grid-color: rgba(80, 200, 255, 0.2);
+        }
+        
+        body {
+            font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+            overflow: hidden;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            grid-template-rows: 60px 1fr 30px;
+            grid-template-areas:
+                "header header"
+                "sidebar main"
+                "footer footer";
+            height: 100vh;
+        }
+        
+        header {
+            grid-area: header;
+            background-color: var(--secondary-bg);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+        
+        .logo span {
+            color: var(--highlight-color);
+            font-weight: 600;
+        }
+        
+        .sidebar {
+            grid-area: sidebar;
+            background-color: var(--secondary-bg);
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+            z-index: 5;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-group h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--highlight-color);
+            border-bottom: 1px solid var(--highlight-color);
+            padding-bottom: 5px;
+        }
+        
+        .control {
+            margin-bottom: 15px;
+        }
+        
+        .control label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .control input[type="range"] {
+            width: 100%;
+            background: var(--panel-bg);
+            -webkit-appearance: none;
+            height: 8px;
+            border-radius: 4px;
+            outline: none;
+        }
+        
+        .control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--highlight-color);
+            cursor: pointer;
+        }
+        
+        .control select, .control button {
+            width: 100%;
+            padding: 8px;
+            background-color: var(--panel-bg);
+            color: var(--text-color);
+            border: 1px solid var(--highlight-color);
+            border-radius: 4px;
+            outline: none;
+        }
+        
+        .control button {
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-weight: 500;
+        }
+        
+        .control button:hover {
+            background-color: var(--highlight-color);
+            color: var(--primary-bg);
+        }
+        
+        .control button.secondary {
+            border-color: var(--accent-color);
+        }
+        
+        .control button.secondary:hover {
+            background-color: var(--accent-color);
+        }
+        
+        .main {
+            grid-area: main;
+            padding: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .visualization-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 20px;
+            height: 100%;
+        }
+        
+        .visualization-panel {
+            background-color: var(--panel-bg);
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .panel-header {
+            padding: 10px 15px;
+            background-color: rgba(0, 0, 0, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .panel-header h2 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        
+        .panel-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .panel-content canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(var(--grid-color) 1px, transparent 1px),
+                              linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 20px 20px;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+        
+        .info-overlay {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            pointer-events: none;
+        }
+        
+        .footer {
+            grid-area: footer;
+            background-color: var(--secondary-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            font-size: 0.8rem;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-active {
+            background-color: var(--success-color);
+        }
+        
+        .status-warning {
+            background-color: var(--warning-color);
+        }
+        
+        .status-error {
+            background-color: var(--accent-color);
+        }
+        
+        .tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: var(--text-color);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            z-index: 100;
+            max-width: 250px;
+            display: none;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 60px auto 1fr 30px;
+                grid-template-areas:
+                    "header"
+                    "sidebar"
+                    "main"
+                    "footer";
+            }
+            
+            .sidebar {
+                padding: 10px;
+            }
+            
+            .visualization-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <h1>Multiverse <span>Spectrum Analyzer</span></h1>
+            </div>
+        </header>
+        
+        <div class="sidebar">
+            <div class="control-group">
+                <h3>Quantum Parameters</h3>
+                <div class="control">
+                    <label for="dimensions">Dimensions</label>
+                    <select id="dimensions">
+                        <option value="1">1D (Linear)</option>
+                        <option value="2" selected>2D (Planar)</option>
+                    </select>
+                </div>
+                <div class="control">
+                    <label for="initial-state">Initial State</label>
+                    <select id="initial-state">
+                        <option value="ground">Ground State</option>
+                        <option value="excited">Excited State</option>
+                        <option value="superposition" selected>Superposition</option>
+                    </select>
+                </div>
+                <div class="control">
+                    <label for="resolution">Resolution: <span id="resolution-value">100</span></label>
+                    <input type="range" id="resolution" min="50" max="200" value="100">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Multiverse Controls</h3>
+                <div class="control">
+                    <label for="branch-probability">Branch Probability: <span id="branch-probability-value">0.5</span></label>
+                    <input type="range" id="branch-probability" min="0" max="1" step="0.01" value="0.5">
+                </div>
+                <div class="control">
+                    <label for="num-branches">Branches per Event: <span id="num-branches-value">2</span></label>
+                    <input type="range" id="num-branches" min="2" max="5" step="1" value="2">
+                </div>
+                <div class="control">
+                    <button id="trigger-event">Trigger Quantum Event</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Simulation</h3>
+                <div class="control">
+                    <label for="time-step">Time Step: <span id="time-step-value">0.1</span></label>
+                    <input type="range" id="time-step" min="0.01" max="0.5" step="0.01" value="0.1">
+                </div>
+                <div class="control">
+                    <button id="evolve">Evolve System</button>
+                </div>
+                <div class="control">
+                    <button id="auto-evolve">Auto Evolution</button>
+                </div>
+                <div class="control">
+                    <button id="reset" class="secondary">Reset Simulation</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Display Options</h3>
+                <div class="control">
+                    <label for="visualization-mode">Visualization Mode</label>
+                    <select id="visualization-mode">
+                        <option value="probability">Probability Density</option>
+                        <option value="wave-real">Wave Function (Real)</option>
+                        <option value="wave-imag">Wave Function (Imaginary)</option>
+                        <option value="wave-phase">Wave Function (Phase)</option>
+                    </select>
+                </div>
+                <div class="control">
+                    <label for="color-scheme">Color Scheme</label>
+                    <select id="color-scheme">
+                        <option value="viridis" selected>Viridis</option>
+                        <option value="plasma">Plasma</option>
+                        <option value="inferno">Inferno</option>
+                        <option value="magma">Magma</option>
+                        <option value="cividis">Cividis</option>
+                    </select>
+                </div>
+                <div class="control">
+                    <label for="show-grid">Show Grid</label>
+                    <input type="checkbox" id="show-grid" checked>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main">
+            <div class="visualization-container">
+                <div class="visualization-panel">
+                    <div class="panel-header">
+                        <h2>Quantum Probability Wave</h2>
+                    </div>
+                    <div class="panel-content">
+                        <canvas id="probability-canvas"></canvas>
+                        <div class="grid-overlay"></div>
+                        <div class="info-overlay">
+                            Time: <span id="time-display">0.00</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="visualization-panel">
+                    <div class="panel-header">
+                        <h2>Universe Branching Tree</h2>
+                    </div>
+                    <div class="panel-content">
+                        <canvas id="branching-canvas"></canvas>
+                        <div class="grid-overlay"></div>
+                        <div class="info-overlay">
+                            Branches: <span id="branches-display">1</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="visualization-panel">
+                    <div class="panel-header">
+                        <h2>Quantum Spectrum Display</h2>
+                    </div>
+                    <div class="panel-content">
+                        <canvas id="spectrum-canvas"></canvas>
+                        <div class="grid-overlay"></div>
+                        <div class="info-overlay">
+                            Frequency Range: <span id="frequency-display">0 - 100</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="visualization-panel">
+                    <div class="panel-header">
+                        <h2>Multiverse Navigator</h2>
+                    </div>
+                    <div class="panel-content">
+                        <canvas id="navigator-canvas"></canvas>
+                        <div class="grid-overlay"></div>
+                        <div class="info-overlay">
+                            Current Universe: <span id="universe-display">Prime</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="status">
+                <div class="status-indicator status-active"></div>
+                <span>Simulation Active</span>
+            </div>
+            <div>
+                <span>Multiverse Time: <span id="multiverse-time">0.00</span></span>
+            </div>
+        </div>
+        
+        <div class="tooltip" id="tooltip"></div>
+    </div>
+
+    <script>
+        // This is a placeholder for the actual JavaScript implementation
+        // In a real implementation, this would connect to the Python backend
+        // and handle all the visualization and interaction logic
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update range slider value displays
+            document.querySelectorAll('input[type="range"]').forEach(function(slider) {
+                const valueDisplay = document.getElementById(slider.id + '-value');
+                if (valueDisplay) {
+                    valueDisplay.textContent = slider.value;
+                    
+                    slider.addEventListener('input', function() {
+                        valueDisplay.textContent = this.value;
+                    });
+                }
+            });
+            
+            // Toggle grid overlay
+            const gridCheckbox = document.getElementById('show-grid');
+            const gridOverlays = document.querySelectorAll('.grid-overlay');
+            
+            gridCheckbox.addEventListener('change', function() {
+                gridOverlays.forEach(function(overlay) {
+                    overlay.style.display = gridCheckbox.checked ? 'block' : 'none';
+                });
+            });
+            
+            // Tooltip functionality
+            const tooltip = document.getElementById('tooltip');
+            
+            document.querySelectorAll('.control label').forEach(function(label) {
+                label.addEventListener('mouseenter', function(e) {
+                    const text = getTooltipText(this.getAttribute('for'));
+                    if (text) {
+                        tooltip.textContent = text;
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = (e.pageX + 10) + 'px';
+                        tooltip.style.top = (e.pageY + 10) + 'px';
+                    }
+                });
+                
+                label.addEventListener('mouseleave', function() {
+                    tooltip.style.display = 'none';
+                });
+            });
+            
+            // Placeholder for canvas initialization
+            initializeCanvases();
+            
+            // Button event listeners
+            document.getElementById('trigger-event').addEventListener('click', triggerQuantumEvent);
+            document.getElementById('evolve').addEventListener('click', evolveSystem);
+            document.getElementById('auto-evolve').addEventListener('click', toggleAutoEvolution);
+            document.getElementById('reset').addEventListener('click', resetSimulation);
+            
+            // For demonstration purposes, we'll update some displays
+            updateDisplays();
+        });
+        
+        function getTooltipText(controlId) {
+            const tooltips = {
+                'dimensions': 'Set the number of dimensions for the quantum simulation.',
+                'initial-state': 'Choose the initial quantum state of the system.',
+                'resolution': 'Set the resolution of the simulation grid. Higher values are more accurate but slower.',
+                'branch-probability': 'Set the probability distribution for universe branching.',
+                'num-branches': 'Set how many new universes are created at each quantum event.',
+                'time-step': 'Set the time step for evolution. Smaller steps are more accurate but slower.',
+                'visualization-mode': 'Choose what aspect of the quantum system to visualize.',
+                'color-scheme': 'Select the color palette for visualizations.',
+                'show-grid': 'Toggle the grid overlay for better spatial reference.'
+            };
+            
+            return tooltips[controlId] || '';
+        }
+        
+        function initializeCanvases() {
+            // This would initialize all canvas contexts and set up initial drawings
+            const canvases = [
+                'probability-canvas',
+                'branching-canvas',
+                'spectrum-canvas',
+                'navigator-canvas'
+            ];
+            
+            canvases.forEach(function(canvasId) {
+                const canvas = document.getElementById(canvasId);
+                const ctx = canvas.getContext('2d');
+                
+                // Set canvas dimensions to match its display size
+                canvas.width = canvas.clientWidth;
+                canvas.height = canvas.clientHeight;
+                
+                // Draw placeholder content
+                drawPlaceholder(ctx, canvas.width, canvas.height, canvasId);
+            });
+        }
+        
+        function drawPlaceholder(ctx, width, height, canvasId) {
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            // Set up gradient background
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
+            gradient.addColorStop(0, '#1a1a2a');
+            gradient.addColorStop(1, '#252538');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw different placeholder content based on canvas type
+            if (canvasId === 'probability-canvas') {
+                drawProbabilityPlaceholder(ctx, width, height);
+            } else if (canvasId === 'branching-canvas') {
+                drawBranchingPlaceholder(ctx, width, height);
+            } else if (canvasId === 'spectrum-canvas') {
+                drawSpectrumPlaceholder(ctx, width, height);
+            } else if (canvasId === 'navigator-canvas') {
+                drawNavigatorPlaceholder(ctx, width, height);
+            }
+        }
+        
+        function drawProbabilityPlaceholder(ctx, width, height) {
+            // Draw a placeholder wave function
+            ctx.beginPath();
+            ctx.moveTo(0, height / 2);
+            
+            for (let x = 0; x < width; x++) {
+                const y = height / 2 + Math.sin(x / 30) * 50 * Math.exp(-Math.pow((x - width / 2) / 100, 2));
+                ctx.lineTo(x, y);
+            }
+            
+            ctx.strokeStyle = '#50c8ff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Fill area under curve
+            ctx.lineTo(width, height);
+            ctx.lineTo(0, height);
+            ctx.closePath();
+            
+            const gradient = ctx.createLinearGradient(0, 0, 0, height);
+            gradient.addColorStop(0, 'rgba(80, 200, 255, 0.5)');
+            gradient.addColorStop(1, 'rgba(80, 200, 255, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.fill();
+        }
+        
+        function drawBranchingPlaceholder(ctx, width, height) {
+            // Draw a placeholder branching tree
+            const drawBranch = (x, y, length, angle, depth) => {
+                if (depth <= 0) return;
+                
+                const endX = x + length * Math.cos(angle);
+                const endY = y + length * Math.sin(angle);
+                
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(endX, endY);
+                ctx.strokeStyle = `rgba(80, 200, 255, ${0.3 + 0.7 * depth / 5})`;
+                ctx.lineWidth = depth;
+                ctx.stroke();
+                
+                const branchLength = length * 0.7;
+                const newDepth = depth - 1;
+                
+                drawBranch(endX, endY, branchLength, angle - 0.5, newDepth);
+                drawBranch(endX, endY, branchLength, angle + 0.5, newDepth);
+            };
+            
+            drawBranch(width / 2, height - 50, 80, -Math.PI / 2, 5);
+        }
+        
+        function drawSpectrumPlaceholder(ctx, width, height) {
+            // Draw a placeholder spectrum
+            const barCount = 50;
+            const barWidth = width / barCount;
+            
+            for (let i = 0; i < barCount; i++) {
+                const x = i * barWidth;
+                
+                // Generate a height based on a combination of sine waves
+                const h1 = Math.sin(i / 5) * 0.5 + 0.5;
+                const h2 = Math.sin(i / 3) * 0.3 + 0.5;
+                const h3 = Math.sin(i / 10) * 0.2 + 0.5;
+                const barHeight = (h1 + h2 + h3) / 3 * height * 0.8;
+                
+                // Create a gradient for each bar
+                const gradient = ctx.createLinearGradient(0, height, 0, height - barHeight);
+                gradient.addColorStop(0, '#50c8ff');
+                gradient.addColorStop(1, '#ff50c8');
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
+            }
+        }
+        
+        function drawNavigatorPlaceholder(ctx, width, height) {
+            // Draw a placeholder navigator interface
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) * 0.4;
+            
+            // Draw outer circle
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = '#50c8ff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw inner circle
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 0.8, 0, Math.PI * 2);
+            ctx.strokeStyle = '#50c8ff';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // Draw radial lines
+            for (let i = 0; i < 8; i++) {
+                const angle = i * Math.PI / 4;
+                const startX = centerX + radius * 0.8 * Math.cos(angle);
+                const startY = centerY + radius * 0.8 * Math.sin(angle);
+                const endX = centerX + radius * Math.cos(angle);
+                const endY = centerY + radius * Math.sin(angle);
+                
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.strokeStyle = '#50c8ff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+            
+            // Draw pointer
+            const pointerAngle = Math.PI / 4;
+            const pointerX = centerX + radius * 0.6 * Math.cos(pointerAngle);
+            const pointerY = centerY + radius * 0.6 * Math.sin(pointerAngle);
+            
+            ctx.beginPath();
+            ctx.arc(pointerX, pointerY, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff50c8';
+            ctx.fill();
+        }
+        
+        function triggerQuantumEvent() {
+            // This would trigger a quantum event in the simulation
+            console.log('Quantum event triggered');
+            
+            // Update displays for demonstration
+            const branchesDisplay = document.getElementById('branches-display');
+            branchesDisplay.textContent = parseInt(branchesDisplay.textContent) * 2;
+            
+            updateDisplays();
+        }
+        
+        function evolveSystem() {
+            // This would evolve the quantum system by one time step
+            console.log('System evolved');
+            
+            // Update time display for demonstration
+            const timeDisplay = document.getElementById('time-display');
+            const multiverseTime = document.getElementById('multiverse-time');
+            
+            const currentTime = parseFloat(timeDisplay.textContent);
+            const timeStep = parseFloat(document.getElementById('time-step').value);
+            
+            timeDisplay.textContent = (currentTime + timeStep).toFixed(2);
+            multiverseTime.textContent = (currentTime + timeStep).toFixed(2);
+            
+            updateDisplays();
+        }
+        
+        let autoEvolutionInterval = null;
+        
+        function toggleAutoEvolution() {
+            const button = document.getElementById('auto-evolve');
+            
+            if (autoEvolutionInterval) {
+                // Stop auto evolution
+                clearInterval(autoEvolutionInterval);
+                autoEvolutionInterval = null;
+                button.textContent = 'Auto Evolution';
+            } else {
+                // Start auto evolution
+                autoEvolutionInterval = setInterval(evolveSystem, 500);
+                button.textContent = 'Stop Auto Evolution';
+            }
+        }
+        
+        function resetSimulation() {
+            // This would reset the simulation to its initial state
+            console.log('Simulation reset');
+            
+            // Reset displays for demonstration
+            document.getElementById('time-display').textContent = '0.00';
+            document.getElementById('multiverse-time').textContent = '0.00';
+            document.getElementById('branches-display').textContent = '1';
+            document.getElementById('universe-display').textContent = 'Prime';
+            
+            // Stop auto evolution if running
+            if (autoEvolutionInterval) {
+                clearInterval(autoEvolutionInterval);
+                autoEvolutionInterval = null;
+                document.getElementById('auto-evolve').textContent = 'Auto Evolution';
+            }
+            
+            updateDisplays();
+        }
+        
+        function updateDisplays() {
+            // This would update all visualizations based on current simulation state
+            // For demonstration, we'll just redraw the placeholders with slight variations
+            
+            const canvases = [
+                'probability-canvas',
+                'branching-canvas',
+                'spectrum-canvas',
+                'navigator-canvas'
+            ];
+            
+            canvases.forEach(function(canvasId) {
+                const canvas = document.getElementById(canvasId);
+                const ctx = canvas.getContext('2d');
+                
+                // Redraw placeholder with slight variation
+                drawPlaceholder(ctx, canvas.width, canvas.height, canvasId);
+            });
+        }
+    </script>
+</body>
+</html>
